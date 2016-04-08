@@ -22,6 +22,7 @@ callbacks = {
 			return
 		elseif tagname == "osm" then
 			in_osm_tag = true
+			return
 		end
 
 		-- parse node, way, relation
@@ -68,10 +69,9 @@ callbacks = {
 			end
 
 			parent_element = cur_obj
-		end
 
 		-- parse tags
-		if tagname == "tag" then
+		elseif tagname == "tag" then
 			if not parent_element then
 				print(("Error: %s %d:%d: <tag> outside of node|way|relation!")
 					:format(file, line, pos))
@@ -95,10 +95,9 @@ callbacks = {
 				parent_element.tags = { }
 			end
 			parent_element.tags[attrs.k] = attrs.v
-		end
 
 		-- parse way members
-		if tagname == "nd" then
+		elseif tagname == "nd" then
 			if not parent_element or parent_element.type ~= "way" then
 				print(("Error: %s %d:%d: <nd> outside of way!")
 					:format(file, line, pos))
@@ -120,10 +119,9 @@ callbacks = {
 				parent_element.nodes = { }
 			end
 			table.insert(parent_element.nodes, attrs.ref)
-		end
 
 		-- parse relation members
-		if tagname == "member" then
+		elseif tagname == "member" then
 			if not parent_element or parent_element.type ~= "relation" then
 				print(("Error: %s %d:%d: <member> outside of relation!")
 					:format(file, line, pos))
@@ -154,6 +152,10 @@ callbacks = {
 				parent_element.members = { }
 			end
 			table.insert(parent_element.members, member)
+
+		else
+			print(("Warning: %s %d:%d: unknown tag <%s>, ignoring it.")
+				:format(file, line, pos, tagname))
 		end
 	end,
 
@@ -194,6 +196,7 @@ parser:parse([[<osm>
 	<member type="node" role="platform" ref="14415" />
 	<member type="way" ref="14412" />
 </relation>
+<foobar />
 </osm>]])
 
 print("")
