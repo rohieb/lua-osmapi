@@ -53,8 +53,21 @@ callbacks = {
 				cur_obj.lat = attrs.lat
 				cur_obj.lon = attrs.lon
 				NODES[attrs.id] = cur_obj
-				parent_element = cur_obj
 			end
+
+			-- ways
+			if tagname == "way" then
+				cur_obj.type = "way"
+				WAYS[attrs.id] = cur_obj
+			end
+
+			-- relations
+			if tagname == "relation" then
+				cur_obj.type = "relation"
+				RELATIONS[attrs.id] = cur_obj
+			end
+
+			parent_element = cur_obj
 		end
 
 		-- parse tags
@@ -65,7 +78,6 @@ callbacks = {
 				parser:stop()
 				return
 			end
-
 			if not attrs.k then
 				print(("Error: %s %d:%d: <tag> without k attribute!")
 					:format(file, line, pos))
@@ -84,10 +96,83 @@ callbacks = {
 			end
 			parent_element.tags[attrs.k] = attrs.v
 		end
+
+		-- parse way members
+		if tagname == "nd" then
+			if not parent_element or parent_element.type ~= "way" then
+				print(("Error: %s %d:%d: <nd> outside of way!")
+					:format(file, line, pos))
+				parser:stop()
+				return
+			end
+			if not attrs.ref then
+				print(("Error: %s %d:%d: <nd> without ref attribute!")
+					:format(file, line, pos))
+				parser:stop()
+				return
+			end
+			if not NODES[attrs.ref] then
+				print(("Warning: %s %d:%d: node %d referenced but no data provided!")
+					:format(file, line, pos, attrs.ref))
+			end
+
+			if parent_element.nodes == nil then
+				parent_element.nodes = { }
+			end
+			table.insert(parent_element.nodes, attrs.ref)
+		end
+
+		-- parse relation members
+		if tagname == "member" then
+			if not parent_element or parent_element.type ~= "relation" then
+				print(("Error: %s %d:%d: <member> outside of relation!")
+					:format(file, line, pos))
+				parser:stop()
+				return
+			end
+			if not attrs.ref then
+				print(("Error: %s %d:%d: <member> without ref attribute!")
+					:format(file, line, pos))
+				parser:stop()
+				return
+			end
+			if not attrs.type then
+				print(("Error: %s %d:%d: <member> without type attribute!")
+					:format(file, line, pos))
+				parser:stop()
+				return
+			end
+			-- note: referencing unknown objects is allowed in relation, so we're not
+			-- checking them here.
+
+			member = { type = attrs.type, ref = attrs.ref }
+			if attrs.role then
+				member.role = attrs.role
+			end
+
+			if parent_element.members == nil then
+				parent_element.members = { }
+			end
+			table.insert(parent_element.members, member)
+		end
 	end,
 
 	EndElement = function (parser, tagname)
 		if tagname == "node" or tagname == "way" or tagname == "relation" then
+			if not parent_element.tags then
+				print(("Warning: %s %d has no tags.")
+					:format(parent_element.type, parent_element.id))
+			end
+
+			if parent_element.type == "way" and not parent_element.nodes then
+				print(("Warning: way %d has no nodes."):format(parent_element.id))
+			end
+
+			if parent_element.type == "relation" and not parent_element.members then
+				print(("Warning: relation %d has no members.")
+					:format(parent_element.id))
+			end
+
 			parent_element = nil
 		end
 	end
@@ -96,10 +181,22 @@ callbacks = {
 parser = lxp.new(callbacks)
 parser:parse([[<osm>
 <node id="24423" lat="53.1" lon = "10.4">
-<tag k="position" v="estimated"/>
-<tag k="fixme" v="hello world" />
-<!--<way>-->
+	<tag k="position" v="estimated"/>
+	<tag k="fixme" v="hello world" />
 </node>
+<way id="14412">
+	<tag k="highway" v="path" />
+	<nd ref="24423" />
+	<nd ref="24723" />
+</way>
+<relation id="565">
+	<member type="node" role="stop_position" ref="24423" />
+	<member type="node" role="platform" ref="14415" />
+	<member type="way" ref="14412" />
+</relation>
 </osm>]])
 
-print(inspect.inspect(NODES))
+print("")
+print("NODES = " .. inspect(NODES))
+print("WAYS = " .. inspect(WAYS))
+print("RELATIONS = " .. inspect(RELATIONS))
