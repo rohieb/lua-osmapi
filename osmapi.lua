@@ -4,9 +4,11 @@ local lxp = require ("lxp")
 local inspect = require("inspect")
 ------------------ /DEBUGGING -------------
 
-local NODES = { }
-local WAYS = { }
-local RELATIONS = { }
+local objects = {
+	nodes = {},
+	ways = {},
+	relations = {},
+}
 
 local file = "input"
 local parent_element = nil
@@ -55,19 +57,19 @@ local function StartElement(parser, tagname, attrs)
 			cur_obj.type = "node"
 			cur_obj.lat = attrs.lat
 			cur_obj.lon = attrs.lon
-			NODES[attrs.id] = cur_obj
+			objects.nodes[attrs.id] = cur_obj
 		end
 
 		-- ways
 		if tagname == "way" then
 			cur_obj.type = "way"
-			WAYS[attrs.id] = cur_obj
+			objects.ways[attrs.id] = cur_obj
 		end
 
 		-- relations
 		if tagname == "relation" then
 			cur_obj.type = "relation"
-			RELATIONS[attrs.id] = cur_obj
+			objects.relations[attrs.id] = cur_obj
 		end
 
 		parent_element = cur_obj
@@ -112,7 +114,7 @@ local function StartElement(parser, tagname, attrs)
 			parser:stop()
 			return
 		end
-		if not NODES[attrs.ref] then
+		if not objects.nodes[attrs.ref] then
 			print(("Warning: %s %d:%d: node %d referenced but no data provided!")
 				:format(file, line, pos, attrs.ref))
 		end
@@ -216,17 +218,15 @@ local function test()
 	parser:parse(s)
 
 	print("")
-	print("NODES = " .. inspect(NODES))
-	print("WAYS = " .. inspect(WAYS))
-	print("RELATIONS = " .. inspect(RELATIONS))
+	print("objects.nodes = " .. inspect(objects.nodes))
+	print("objects.ways = " .. inspect(objects.ways))
+	print("objects.relations = " .. inspect(objects.relations))
 end
 
 -- build the module table
 osmapi = {
 	load_file = load_file,
-	NODES = NODES,
-	RELATIONS = RELATIONS,
-	WAYS = WAYS
+	objects = objects,
 }
 
 return osmapi
