@@ -183,16 +183,20 @@ local function EndElement(parser, tagname)
 	end
 end
 
-
---
--- Load objects from OSM XML file
---
-local function load_file(filename)
+--- Parse OSM XML from string
+-- @return object dictionary
+local function parse(s)
 	parser = lxp.new({ StartElement = StartElement, EndElement = EndElement })
-	file = filename
-	local f = io.open(file, "r")
-	s = f:read("*all")
 	parser:parse(s)
+	return objects
+end
+
+--- Load objects from OSM XML file
+-- @return object dictionary
+local function load_file(filename)
+	local f = io.open(filename, "r")
+	s = f:read("*all")
+	return parse(s)
 end
 
 local function test()
@@ -214,17 +218,15 @@ local function test()
 	</relation>
 	<foobar />
 	</osm>]]
-	parser = lxp.new({ StartElement = StartElement, EndElement = EndElement })
-	parser:parse(s)
+	objs = parse(s)
 
 	print("")
-	print("objects.nodes = " .. inspect(objects.nodes))
-	print("objects.ways = " .. inspect(objects.ways))
-	print("objects.relations = " .. inspect(objects.relations))
+	print("objects = " .. inspect(objs))
 end
 
 -- build the module table
 osmapi = {
+	parse = parse,
 	load_file = load_file,
 	objects = objects,
 }
