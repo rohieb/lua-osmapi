@@ -3,6 +3,7 @@ local utils = require("./utils")
 
 local objects = {}
 
+local xml_parser = nil
 local file = "input"
 local parent_element = nil
 local in_osm_tag = false
@@ -188,22 +189,29 @@ local function EndElement(parser, tagname)
 end
 
 --- Parse OSM XML from string
--- @return object dictionary
+-- @return (res, msg, line, col, pos):
+--	* res: non-nil if parsing successful, nil in case of errors
+--	* msg: optional error message
+--	* line, col, pos: line, column and absolute position where the error happened
 local function parse(s)
-	parser = lxp.new({ StartElement = StartElement, EndElement = EndElement })
-	parser:parse(s)
-	return objects
+	if not xml_parser then
+		xml_parser = lxp.new({
+			StartElement = StartElement,
+			EndElement = EndElement,
+		})
+	end
+	return xml_parser:parse(s)
 end
 
 --- Load objects from OSM XML file
--- @return object dictionary
+-- @return see return values from parse()
 local function load_file(filename)
 	file = filename
 	local f = io.open(filename, "r")
 	s = f:read("*all")
-	local res = parse(s)
+	local res, msg, line, col, pos = parse(s)
 	file = "input"
-	return res
+	return res, msg, line, pol, pos
 end
 
 --- Delete entries from the object cache
