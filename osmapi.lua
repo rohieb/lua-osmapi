@@ -1,10 +1,6 @@
 local lxp = require ("lxp")
 
-local objects = {
-	nodes = {},
-	ways = {},
-	relations = {},
-}
+local objects = {}
 
 local file = "input"
 local parent_element = nil
@@ -53,19 +49,19 @@ local function StartElement(parser, tagname, attrs)
 			cur_obj.type = "node"
 			cur_obj.lat = attrs.lat
 			cur_obj.lon = attrs.lon
-			objects.nodes[attrs.id] = cur_obj
+			objects["n" .. attrs.id] = cur_obj
 		end
 
 		-- ways
 		if tagname == "way" then
 			cur_obj.type = "way"
-			objects.ways[attrs.id] = cur_obj
+			objects["w" .. attrs.id] = cur_obj
 		end
 
 		-- relations
 		if tagname == "relation" then
 			cur_obj.type = "relation"
-			objects.relations[attrs.id] = cur_obj
+			objects["r"..attrs.id] = cur_obj
 		end
 
 		parent_element = cur_obj
@@ -110,7 +106,7 @@ local function StartElement(parser, tagname, attrs)
 			parser:stop()
 			return
 		end
-		if not objects.nodes[attrs.ref] then
+		if not objects["n" .. attrs.ref] then
 			print(("Warning: %s %d:%d: node %d referenced but no data provided!")
 				:format(file, line, pos, attrs.ref))
 		end
@@ -199,7 +195,7 @@ end
 osmapi = {
 	parse = parse,
 	load_file = load_file,
-	objects = objects,
+	objects = function () return objects end,
 }
 
 return osmapi
