@@ -1,9 +1,5 @@
 local lxp = require ("lxp")
 
------------------- DEBUGGING --------------
-local inspect = require("inspect")
------------------- /DEBUGGING -------------
-
 local objects = {
 	nodes = {},
 	ways = {},
@@ -197,31 +193,6 @@ local function load_file(filename)
 	local f = io.open(filename, "r")
 	s = f:read("*all")
 	return parse(s)
-end
-
-local function test()
-	-- fixme: lxp parse return value handling
-	local s = [[<osm>
-	<node id="24423" lat="53.1" lon = "10.4">
-		<tag k="position" v="estimated"/>
-		<tag k="fixme" v="hello world" />
-	</node>
-	<way id="14412">
-		<tag k="highway" v="path" />
-		<nd ref="24423" />
-		<nd ref="24723" />
-	</way>
-	<relation id="565">
-		<member type="node" role="stop_position" ref="24423" />
-		<member type="node" role="platform" ref="14415" />
-		<member type="way" ref="14412" />
-	</relation>
-	<foobar />
-	</osm>]]
-	objs = parse(s)
-
-	print("")
-	print("objects = " .. inspect(objs))
 end
 
 -- build the module table
