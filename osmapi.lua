@@ -1,4 +1,5 @@
 local lxp = require ("lxp")
+local utils = require("./utils")
 
 local objects = {}
 
@@ -9,6 +10,13 @@ local in_osm_tag = false
 local function file_pos_format(file, line, pos)
 	return ("%s:%d:%d"):format(file, line, pos)
 end
+
+--- Build node ID(s) for index access in objects()
+local function node_id(ids) return utils.prefix_id("n", ids) end
+--- Build way ID(s) for index access in objects()
+local function way_id(ids) return utils.prefix_id("w", ids) end
+--- Build relation ID(s) for index access in objects()
+local function relation_id(ids) return utils.prefix_id("r", ids) end
 
 --
 -- Expat callbacks
@@ -225,6 +233,11 @@ osmapi = {
 	load_file = load_file,
 	forget = forget,
 	forget_all = forget_all,
+
+	node_id = node_id,
+	way_id = way_id,
+	relation_id = relation_id,
+
 	objects = function () return objects end,
 }
 

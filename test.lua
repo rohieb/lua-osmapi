@@ -6,6 +6,7 @@ local s = [[<osm>
 		<tag k="position" v="estimated"/>
 		<tag k="fixme" v="hello world" />
 	</node>
+	<node id="24723" lat="53.1" lon = "10.4" />
 	<way id="14412">
 		<tag k="highway" v="path" />
 		<nd ref="24423" />
@@ -22,7 +23,8 @@ osmapi.parse(s)
 print("")
 print("objects = " .. inspect(osmapi.objects()))
 
-osmapi.forget("r565")
+osmapi.forget(osmapi.node_id({24423, 24723}))
+osmapi.forget(osmapi.relation_id(565))
 print("-------------------------")
 print("objects = " .. inspect(osmapi.objects()))
 
