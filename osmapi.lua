@@ -6,6 +6,10 @@ local file = "input"
 local parent_element = nil
 local in_osm_tag = false
 
+local function file_pos_format(file, line, pos)
+	return ("%s:%d:%d"):format(file, line, pos)
+end
+
 --
 -- Expat callbacks
 --
@@ -24,13 +28,13 @@ local function StartElement(parser, tagname, attrs)
 	-- parse node, way, relation
 	if (tagname == "node" or tagname == "way" or tagname == "relation") then
 		if parent_element then
-			print(("Error: %s %d:%d: <%s> inside of node|way|relation!")
-				:format(file, line, pos, tagname))
+			print(("Error: %s: <%s> inside of node|way|relation!")
+				:format(file_pos_format(file_pos_format(file, line, pos)), tagname))
 			parser:stop()
 		end
 		if not attrs.id then
-			print(("Error: %s %d:%d: <%s> without id attribute!")
-				:format(file, line, pos, tagname))
+			print(("Error: %s: <%s> without id attribute!")
+				:format(file_pos_format(file, line, pos), tagname))
 			parser:stop()
 			return
 		end
@@ -40,8 +44,8 @@ local function StartElement(parser, tagname, attrs)
 		-- nodes
 		if tagname == "node" then
 			if not attrs.lat or not attrs.lon then
-				print(("Error: %s %d:%d: <node> without lat/lon attribute!")
-					:format(file, line, pos))
+				print(("Error: %s: <node> without lat/lon attribute!")
+					:format(file_pos_format(file, line, pos)))
 				parser:stop()
 				return
 			end
@@ -69,20 +73,20 @@ local function StartElement(parser, tagname, attrs)
 	-- parse tags
 	elseif tagname == "tag" then
 		if not parent_element then
-			print(("Error: %s %d:%d: <tag> outside of node|way|relation!")
-				:format(file, line, pos))
+			print(("Error: %s: <tag> outside of node|way|relation!")
+				:format(file_pos_format(file, line, pos)))
 			parser:stop()
 			return
 		end
 		if not attrs.k then
-			print(("Error: %s %d:%d: <tag> without k attribute!")
-				:format(file, line, pos))
+			print(("Error: %s: <tag> without k attribute!")
+				:format(file_pos_format(file, line, pos)))
 			parser:stop()
 			return
 		end
 		if not attrs.v then
-			print(("Error: %s %d:%d: <tag> without v attribute!")
-				:format(file, line, pos))
+			print(("Error: %s: <tag> without v attribute!")
+				:format(file_pos_format(file, line, pos)))
 			parser:stop()
 			return
 		end
@@ -95,20 +99,20 @@ local function StartElement(parser, tagname, attrs)
 	-- parse way members
 	elseif tagname == "nd" then
 		if not parent_element or parent_element.type ~= "way" then
-			print(("Error: %s %d:%d: <nd> outside of way!")
-				:format(file, line, pos))
+			print(("Error: %s: <nd> outside of way!")
+				:format(file_pos_format(file, line, pos)))
 			parser:stop()
 			return
 		end
 		if not attrs.ref then
-			print(("Error: %s %d:%d: <nd> without ref attribute!")
-				:format(file, line, pos))
+			print(("Error: %s: <nd> without ref attribute!")
+				:format(file_pos_format(file, line, pos)))
 			parser:stop()
 			return
 		end
 		if not objects["n" .. attrs.ref] then
-			print(("Warning: %s %d:%d: node %d referenced but no data provided!")
-				:format(file, line, pos, attrs.ref))
+			print(("Warning: %s: node %d referenced but no data provided!")
+				:format(file_pos_format(file, line, pos), attrs.ref))
 		end
 
 		if parent_element.nodes == nil then
@@ -119,20 +123,20 @@ local function StartElement(parser, tagname, attrs)
 	-- parse relation members
 	elseif tagname == "member" then
 		if not parent_element or parent_element.type ~= "relation" then
-			print(("Error: %s %d:%d: <member> outside of relation!")
-				:format(file, line, pos))
+			print(("Error: %s: <member> outside of relation!")
+				:format(file_pos_format(file, line, pos)))
 			parser:stop()
 			return
 		end
 		if not attrs.ref then
-			print(("Error: %s %d:%d: <member> without ref attribute!")
-				:format(file, line, pos))
+			print(("Error: %s: <member> without ref attribute!")
+				:format(file_pos_format(file, line, pos)))
 			parser:stop()
 			return
 		end
 		if not attrs.type then
-			print(("Error: %s %d:%d: <member> without type attribute!")
-				:format(file, line, pos))
+			print(("Error: %s: <member> without type attribute!")
+				:format(file_pos_format(file, line, pos)))
 			parser:stop()
 			return
 		end
@@ -150,8 +154,8 @@ local function StartElement(parser, tagname, attrs)
 		table.insert(parent_element.members, member)
 
 	else
-		print(("Warning: %s %d:%d: unknown tag <%s>, ignoring it.")
-			:format(file, line, pos, tagname))
+		print(("Warning: %s: unknown tag <%s>, ignoring it.")
+			:format(file_pos_format(file, line, pos), tagname))
 	end
 end
 
@@ -186,9 +190,12 @@ end
 --- Load objects from OSM XML file
 -- @return object dictionary
 local function load_file(filename)
+	file = filename
 	local f = io.open(filename, "r")
 	s = f:read("*all")
-	return parse(s)
+	local res = parse(s)
+	file = "input"
+	return res
 end
 
 --- Delete entries from the object cache
