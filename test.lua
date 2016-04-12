@@ -18,6 +18,18 @@ local s = [[<osm>
 	</relation>
 	<foobar />
 	</osm>]]
-local objs = osmapi.parse(s)
+osmapi.parse(s)
 print("")
-print("objects = " .. inspect(objs))
+print("objects = " .. inspect(osmapi.objects()))
+
+osmapi.forget("r565")
+print("-------------------------")
+print("objects = " .. inspect(osmapi.objects()))
+
+osmapi.forget_all()
+print("-------------------------")
+print("objects = " .. inspect(osmapi.objects()))
+
+osmapi.load_file("test.xml")
+print("-------------------------")
+print("objects = " .. inspect(osmapi.objects()))

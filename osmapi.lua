@@ -191,10 +191,33 @@ local function load_file(filename)
 	return parse(s)
 end
 
+--- Delete entries from the object cache
+-- @param ids array of IDs or single ID, prefixed with object type (n|w|r)
+local function forget(ids)
+	if type(ids) == "table" then
+		for i in pairs(ids) do
+			objects[i] = nil
+		end
+	else
+		objects[ids] = nil
+	end
+end
+
+--- Empty the object cache
+local function forget_all()
+	objects = {}
+end
+
+--- Fetch one or more objects from the API
+-- @param ids array of IDs or single ID, prefixed with object type (n|w|r)
+
+
 -- build the module table
 osmapi = {
 	parse = parse,
 	load_file = load_file,
+	forget = forget,
+	forget_all = forget_all,
 	objects = function () return objects end,
 }
 
