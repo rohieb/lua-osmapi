@@ -207,15 +207,10 @@ local function load_file(filename)
 end
 
 --- Delete entries from the object cache
--- @param ids array of IDs or single ID, prefixed with object type (n|w|r)
+-- @param ids array of IDs or single ID, prefixed with object type (n|w|r). See
+--  node_id(), way_id(), relation_id().
 local function forget(ids)
-	if type(ids) == "table" then
-		for i in pairs(ids) do
-			objects[i] = nil
-		end
-	else
-		objects[ids] = nil
-	end
+	utils.map(ids, function (_,v) objects[v] = nil end)
 end
 
 --- Empty the object cache
