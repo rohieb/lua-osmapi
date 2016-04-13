@@ -1,6 +1,12 @@
 local lxp = require ("lxp")
 local utils = require("./utils")
 
+local http = require("socket.http")
+http.TIMEOUT = 3
+http.USERAGENT = "lua-osmapi/0.0"
+
+local APIURL = "http://api.openstreetmap.org/api"
+
 local objects = {}
 
 local xml_parser = nil
@@ -225,14 +231,45 @@ local function forget_all()
 	objects = {}
 end
 
---- Fetch one or more objects from the API
--- @param ids array of IDs or single ID, prefixed with object type (n|w|r)
+--- Fetch an object from the API. In case of ways and relations, also fetch all
+-- referenced members.
+-- @param ids ID, prefixed with object type (n|w|r), see node_id(), way_id(),
+--  relation_id().
+-- @return true in case of success, nil in case of invalid input, http error
+--  code and response headers in case of failure
+local function fetch(objs)
+	local url
+	local type_part = string.sub(objs, 1, 1)
+	local id_part   = string.sub(objs, 2)
 
+	if type_part == "n" then
+		url = ("%s/0.6/nodes?nodes=%d"):format(APIURL, id_part)
+	elseif type_part == "w" then
+		url = ("%s/0.6/way/%d/full"):format(APIURL, id_part)
+	elseif type_part == "r" then
+		url = ("%s/0.6/relation/%d/full"):format(APIURL, id_part)
+	else
+		return nil      -- invalid type
+	end
+	print(url)
+
+	local d, c, h = http.request(url)
+	if c == 200 and #d > 0 then
+		parse(d)
+	else
+		print(("API returned HTTP %d: %s"):format(c, d))
+		return c, h
+	end
+
+	return true
+end
 
 -- build the module table
 osmapi = {
 	parse = parse,
 	load_file = load_file,
+	fetch = fetch,
+
 	forget = forget,
 	forget_all = forget_all,
 

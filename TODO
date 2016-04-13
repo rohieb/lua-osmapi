@@ -1,0 +1,2 @@
+- maybe make http -> parse() LTN12-based source/sinks?
+  * see http://lua-users.org/wiki/FiltersSourcesAndSinks
