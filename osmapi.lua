@@ -25,6 +25,11 @@ local function node_id(ids) return utils.prefix_id("n", ids) end
 local function way_id(ids) return utils.prefix_id("w", ids) end
 --- Build relation ID(s) for index access in objects()
 local function relation_id(ids) return utils.prefix_id("r", ids) end
+--- Split (single) ID into object type part and ID part
+-- @returns type, id
+local function split_id(id)
+	return string.sub(id, 1, 1), tonumber(string.sub(id, 2))
+end
 
 --
 -- Expat callbacks
@@ -274,8 +279,7 @@ local function fetch(objs)
 
 	else
 		moses.each(objs, function (_,v)
-			local type_part = string.sub(v, 1, 1)
-			local id_part   = tonumber(string.sub(v, 2))
+			local type_part, id_part = split_id(v)
 			if type_part == "n" then
 				table.insert(nodes, id_part)
 			elseif type_part == "w" then
@@ -321,6 +325,7 @@ osmapi = {
 	node_id = node_id,
 	way_id = way_id,
 	relation_id = relation_id,
+	split_id = split_id,
 
 	objects = function () return objects end,
 }
