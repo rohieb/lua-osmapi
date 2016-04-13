@@ -119,10 +119,6 @@ local function StartElement(parser, tagname, attrs)
 			parser:stop()
 			return
 		end
-		if not objects["n" .. attrs.ref] then
-			print(("Warning: %s: node %d referenced but no data provided!")
-				:format(file_pos_format(file, line, pos), attrs.ref))
-		end
 
 		if parent_element.nodes == nil then
 			parent_element.nodes = { }
@@ -170,20 +166,6 @@ end
 
 local function EndElement(parser, tagname)
 	if tagname == "node" or tagname == "way" or tagname == "relation" then
-		if not parent_element.tags then
-			print(("Warning: %s %d has no tags.")
-				:format(parent_element.type, parent_element.id))
-		end
-
-		if parent_element.type == "way" and not parent_element.nodes then
-			print(("Warning: way %d has no nodes."):format(parent_element.id))
-		end
-
-		if parent_element.type == "relation" and not parent_element.members then
-			print(("Warning: relation %d has no members.")
-				:format(parent_element.id))
-		end
-
 		parent_element = nil
 	end
 end
