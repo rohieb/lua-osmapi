@@ -188,12 +188,29 @@ end
 --- Load objects from OSM XML file
 -- @return see return values from parse()
 local function load_file(filename)
-	file = filename
-	local f = io.open(filename, "r")
-	s = f:read("*all")
-	local res, msg, line, col, pos = parse(s)
-	file = "input"
-	return res, msg, line, pol, pos
+	local f, msg = io.open(filename, "r")
+
+	if not f then
+		return nil, msg, 0, 0, 0
+	end
+
+	-- read chunks of 1 KiB and feed them to the parser
+	while true do
+		local s = f:read(1024)
+		if s == nil then         -- eof
+			break
+		end
+
+		file = filename          -- for the error output
+		local res, msg, line, col, pos = parse(s)
+		file = "input"           -- in case parse() is afterwards called directly
+
+		if res == nil then
+			return res, msg, line, pol, pos
+		end
+	end
+
+	return true
 end
 
 --- Delete entries from the object cache
