@@ -1,4 +1,5 @@
 local lxp = require ("lxp")
+local moses = require ("moses")
 local utils = require("./utils")
 
 local http = require("socket.http")
@@ -173,6 +174,8 @@ end
 local function EndElement(parser, tagname)
 	if tagname == "node" or tagname == "way" or tagname == "relation" then
 		parent_element = nil
+	elseif tagname == osm then
+		in_osm_tag = false
 	end
 end
 
@@ -231,37 +234,79 @@ local function forget_all()
 	objects = {}
 end
 
---- Fetch an object from the API. In case of ways and relations, also fetch all
--- referenced members.
--- @param ids ID, prefixed with object type (n|w|r), see node_id(), way_id(),
---  relation_id().
--- @return true in case of success, nil in case of invalid input, http error
---  code and response headers in case of failure
-local function fetch(objs)
-	local url
-	local type_part = string.sub(objs, 1, 1)
-	local id_part   = string.sub(objs, 2)
-
-	if type_part == "n" then
-		url = ("%s/0.6/nodes?nodes=%d"):format(APIURL, id_part)
-	elseif type_part == "w" then
-		url = ("%s/0.6/way/%d/full"):format(APIURL, id_part)
-	elseif type_part == "r" then
-		url = ("%s/0.6/relation/%d/full"):format(APIURL, id_part)
-	else
-		return nil      -- invalid type
-	end
+-- helper for http -> parse
+local function do_fetch(url)
 	print(url)
 
 	local d, c, h = http.request(url)
+	print(("HTTP %d, %d bytes"):format(c, #d))
+
 	if c == 200 and #d > 0 then
-		parse(d)
+		local res, msg, line, pol, pos = parse(d)
+		if res == nil then
+			print("XML error:", res, msg, line, pol, pos)
+		else
+			-- close the parser, otherwise it complains about junk after the </osm> tag
+			xml_parser:close()
+			xml_parser = nil
+		end
 	else
 		print(("API returned HTTP %d: %s"):format(c, d))
 		return c, h
 	end
 
 	return true
+end
+
+--- Fetch objects from the API. In case of ways and relations, also fetch all
+-- referenced members.
+-- @param ids ID or array of IDs, prefixed with object type (n|w|r), see
+-- node_id(), way_id(), relation_id().
+-- @return true in case of success, http error code and response headers in case
+-- of failure
+local function fetch(objs)
+	local url
+	local nodes, ways, relations = {}, {}, {}
+	local c, h
+
+	if type(objs) ~= "table" then
+		return fetch({ objs })
+
+	else
+		moses.each(objs, function (_,v)
+			local type_part = string.sub(v, 1, 1)
+			local id_part   = tonumber(string.sub(v, 2))
+			if type_part == "n" then
+				table.insert(nodes, id_part)
+			elseif type_part == "w" then
+				table.insert(ways, id_part)
+			elseif type_part == "r" then
+				table.insert(relations, id_part)
+			end
+		end)
+
+		if #nodes > 0 then
+			local list = moses.reduce(nodes, function (m,v) return m .. "," .. v end)
+			c, h = do_fetch(("%s/0.6/nodes?nodes=%s"):format(APIURL, list))
+			if c ~= true then
+				return c, h
+			end
+		end
+
+		moses.each(ways, function (_,w)
+			c, h = do_fetch(("%s/0.6/way/%d/full"):format(APIURL, tonumber(w)))
+			if c ~= true then
+				return c, h
+			end
+		end)
+
+		moses.each(relations, function (_,r)
+			c, h = do_fetch(("%s/0.6/relation/%d/full"):format(APIURL, tonumber(r)))
+			if c ~= true then
+				return c, h
+			end
+		end)
+	end
 end
 
 -- build the module table
