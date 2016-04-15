@@ -335,11 +335,64 @@ local function fetch(objs)
 	end
 end
 
+--- Fetch objects that are referenced as members but not loaded yet.
+-- @param ids (number or array) object IDs whose members should be resolved. If
+--   one of those objects is already in the cache, it is not fetched again.
+--   Relations are not resolved recursively.
+--   (Note that in most cases it is only sensible to specify relation IDs here,
+--   since nodes don't have members, and all way members are automatically
+--   fetched with the way.)
+-- @return same as fetch()
+local function resolve(resolve_ids)
+	if type(resolve_ids) ~= "table" then
+		-- called with a single object id
+		return resolve({ resolve_ids })
+
+	else
+		if resolve_ids[1].ref then
+			-- called with objects[id].members
+			print("called with member objects.")
+			return resolve(moses.map(resolve_ids, function (_,v) return v.ref end))
+		end
+
+		-- otherwise, called with array of object ids
+		local fetch_list = {}
+		local probably_add_to_fetch_list = function(_, member_id)
+			if objects[member_id] == nil then
+				table.insert(fetch_list, member_id)
+			end
+		end
+
+		-- iterate over members
+		moses.each(resolve_ids, function (_, object_id)
+			if not objects[object_id] then
+				return
+			end
+
+			local obj_type = split_id(object_id)
+
+			if obj_type == "w" then
+				-- iterate over way nodes
+				moses.each(objects[object_id].nodes, probably_add_to_fetch_list)
+
+			elseif obj_type == "r" then
+				-- iterate over relation members
+				moses.each(objects[object_id].members, function (_, member)
+					probably_add_to_fetch_list(_, member.ref)
+				end)
+			end
+		end)
+
+		return fetch(fetch_list)
+	end
+end
+
 -- build the module table
 osmapi = {
 	parse = parse,
 	load_file = load_file,
 	fetch = fetch,
+	resolve = resolve,
 
 	forget = forget,
 	forget_all = forget_all,
