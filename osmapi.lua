@@ -402,6 +402,8 @@ osmapi = {
 	relation_id = relation_id,
 	split_id = split_id,
 
+	print_statistics = print_statistics,
+
 	objects = function () return objects end,
 }
 
