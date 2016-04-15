@@ -31,6 +31,12 @@ local function relation_id(ids) return utils.prefix_id("r", ids) end
 local function split_id(id)
 	return string.sub(id, 1, 1), tonumber(string.sub(id, 2))
 end
+local function build_id(tagname, id)
+	if     tagname == "node"     or tagname == "n" then return node_id(id)
+	elseif tagname == "way"      or tagname == "w" then return way_id(id)
+	elseif tagname == "relation" or tagname == "r" then return relation_id(id)
+	end
+end
 
 --
 -- Expat callbacks
@@ -61,7 +67,7 @@ local function StartElement(parser, tagname, attrs)
 			return
 		end
 
-		local cur_obj = { id = attrs.id }
+		local cur_obj = {}
 
 		-- nodes
 		if tagname == "node" then
@@ -72,24 +78,22 @@ local function StartElement(parser, tagname, attrs)
 				return
 			end
 
-			cur_obj.type = "node"
+			cur_obj.id = node_id(attrs.id)
 			cur_obj.lat = attrs.lat
 			cur_obj.lon = attrs.lon
-			objects["n" .. attrs.id] = cur_obj
 		end
 
 		-- ways
 		if tagname == "way" then
-			cur_obj.type = "way"
-			objects["w" .. attrs.id] = cur_obj
+			cur_obj.id = way_id(attrs.id)
 		end
 
 		-- relations
 		if tagname == "relation" then
-			cur_obj.type = "relation"
-			objects["r"..attrs.id] = cur_obj
+			cur_obj.id = relation_id(attrs.id)
 		end
 
+		objects[cur_obj.id] = cur_obj
 		parent_element = cur_obj
 
 	-- parse tags
@@ -120,7 +124,7 @@ local function StartElement(parser, tagname, attrs)
 
 	-- parse way members
 	elseif tagname == "nd" then
-		if not parent_element or parent_element.type ~= "way" then
+		if not parent_element or split_id(parent_element.id) ~= "w" then
 			print(("Error: %s: <nd> outside of way!")
 				:format(file_pos_format(file, line, pos)))
 			parser:stop()
@@ -136,11 +140,11 @@ local function StartElement(parser, tagname, attrs)
 		if parent_element.nodes == nil then
 			parent_element.nodes = { }
 		end
-		table.insert(parent_element.nodes, attrs.ref)
+		table.insert(parent_element.nodes, node_id(attrs.ref))
 
 	-- parse relation members
 	elseif tagname == "member" then
-		if not parent_element or parent_element.type ~= "relation" then
+		if not parent_element or split_id(parent_element.id) ~= "r" then
 			print(("Error: %s: <member> outside of relation!")
 				:format(file_pos_format(file, line, pos)))
 			parser:stop()
@@ -161,7 +165,7 @@ local function StartElement(parser, tagname, attrs)
 		-- note: referencing unknown objects is allowed in relation, so we're not
 		-- checking them here.
 
-		member = { type = attrs.type, ref = attrs.ref }
+		local member = { ref = build_id(attrs.type, attrs.ref) }
 		if attrs.role then
 			member.role = attrs.role
 		end
