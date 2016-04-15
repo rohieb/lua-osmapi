@@ -216,10 +216,16 @@ local function load_file(filename)
 	end
 
 	-- read chunks of 1 KiB and feed them to the parser
+	local loop = 0
 	while true do
 		local s = f:read(1024)
 		if s == nil then         -- eof
 			break
+		end
+
+		loop = loop + 1
+		if loop % 1024 == 0 then
+			print(("Read %d MiB" ):format(loop / 1024))
 		end
 
 		file = filename          -- for the error output
