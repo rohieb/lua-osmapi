@@ -171,6 +171,9 @@ local function StartElement(parser, tagname, attrs)
 		end
 		table.insert(parent_element.members, member)
 
+	-- ignore bounds, but don't warn for unknown tag
+	elseif tagname == "bounds" then
+
 	else
 		print(("Warning: %s: unknown tag <%s>, ignoring it.")
 			:format(file_pos_format(file, line, pos), tagname))
