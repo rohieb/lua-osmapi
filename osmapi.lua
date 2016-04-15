@@ -9,6 +9,7 @@ http.USERAGENT = "lua-osmapi/0.0"
 local APIURL = "http://api.openstreetmap.org/api"
 
 local objects = {}
+local obj_count = { node = 0, way = 0, relation = 0 }
 
 local xml_parser = nil
 local file = "input"
@@ -178,10 +179,16 @@ end
 
 local function EndElement(parser, tagname)
 	if tagname == "node" or tagname == "way" or tagname == "relation" then
+		obj_count[tagname] = obj_count[tagname] + 1
 		parent_element = nil
 	elseif tagname == osm then
 		in_osm_tag = false
 	end
+end
+
+local function print_statistics()
+	print(("Object cache consists of %d nodes, %d ways, %d relations.")
+		:format(obj_count.node, obj_count.way, obj_count.relation))
 end
 
 --- Parse OSM XML from string
@@ -223,6 +230,8 @@ local function load_file(filename)
 			return res, msg, line, pol, pos
 		end
 	end
+
+	print_statistics()
 
 	return true
 end
