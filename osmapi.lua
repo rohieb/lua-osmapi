@@ -362,13 +362,20 @@ local function fetch_full(obj)
 end
 
 --- Fetch objects that are referenced as members but not loaded yet.
--- @param ids (number or array) object IDs whose members should be resolved. If
---   one of those objects is already in the cache, it is not fetched again.
---   Relations are not resolved recursively.
---   (Note that in most cases it is only sensible to specify relation IDs here,
---   since nodes don't have members, and all way members are automatically
---   fetched with the way.)
--- @return same as fetch()
+-- Resolving is not done recursively. If relations in the object cache refer to
+-- relations which are not loaded yet, these relations are loadedi by this
+-- function, but their members are not. This can be done by calling resolve()
+-- again with the respective object IDs.
+--
+-- @param ids (boolean, string or array) object IDs whose members should be
+--   resolved. If one of those objects is already in the cache, it is not
+--   fetched again.
+--   If this parameter is true, all current objects in the objects cache are
+--   resolved. Use with care! This could lead to very big amounts of data being
+--   downloaded!
+--   If unknown object IDs are specified, they are silently ignored.
+-- @return true in case of success, HTTP error code and response headers in case
+--   of HTTP failure.
 local function resolve(resolve_ids)
 	if type(resolve_ids) ~= "table" then
 		-- called with a single object id
