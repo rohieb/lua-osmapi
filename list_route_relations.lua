@@ -1,7 +1,8 @@
 local o = require("osmapi")
 local m = require("moses")
 
-o.load_file("braunschweig.osm")
+-- input file: use your own file here.
+o.load_file("input.osm")
 o.print_statistics()
 
 m.each(o.objects(), function (_,v)
