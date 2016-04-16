@@ -291,8 +291,7 @@ local function do_fetch(url)
 	return true
 end
 
---- Fetch objects from the API. In case of ways and relations, also fetch all
--- referenced members.
+--- Fetch objects from the API.
 -- @param ids ID or array of IDs, prefixed with object type (n|w|r), see
 -- node_id(), way_id(), relation_id().
 -- @return true in case of success, http error code and response headers in case
@@ -317,27 +316,48 @@ local function fetch(objs)
 			end
 		end)
 
+		local do_fetch_url_helper = function(objname, ids)
+			local list = moses.reduce(ids, function (m,v) return m .. "," .. v end)
+			return do_fetch(("%s/0.6/%s?%s=%s"):format(APIURL, objname, objname, list))
+		end
+
 		if #nodes > 0 then
-			local list = moses.reduce(nodes, function (m,v) return m .. "," .. v end)
-			c, h = do_fetch(("%s/0.6/nodes?nodes=%s"):format(APIURL, list))
+			c, h = do_fetch_url_helper("nodes", nodes)
 			if c ~= true then
 				return c, h
 			end
 		end
-
-		moses.each(ways, function (_,w)
-			c, h = do_fetch(("%s/0.6/way/%d/full"):format(APIURL, tonumber(w)))
+		if #ways > 0 then
+			c, h = do_fetch_url_helper("ways", ways)
 			if c ~= true then
 				return c, h
 			end
-		end)
-
-		moses.each(relations, function (_,r)
-			c, h = do_fetch(("%s/0.6/relation/%d/full"):format(APIURL, tonumber(r)))
+		end
+		if #relations > 0 then
+			c, h = do_fetch_url_helper("relations", relations)
 			if c ~= true then
 				return c, h
 			end
-		end)
+		end
+	end
+end
+
+
+--- Fetch a single object and all its referenced members (non-recursively).
+-- @param ids ID or array of IDs, prefixed with object type (n|w|r), see
+-- node_id(), way_id(), relation_id().
+-- @return true in case of success, HTTP error code and response headers in case
+-- of failure
+local function fetch_full(obj)
+	local type_part, id_part = split_id(obj)
+
+	if type_part == "n" then
+		return fetch({ obj })
+	elseif type_part == "w" then
+		return do_fetch(("%s/0.6/way/%d/null"):format(APIURL, tonumber(id_part)))
+	elseif type_part == "r" then
+		return do_fetch(("%s/0.6/relation/%d/full"):format(APIURL,
+			tonumber(id_part)))
 	end
 end
 
@@ -398,6 +418,7 @@ osmapi = {
 	parse = parse,
 	load_file = load_file,
 	fetch = fetch,
+	fetch_full = fetch_full,
 	resolve = resolve,
 
 	forget = forget,
