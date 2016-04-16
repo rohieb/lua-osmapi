@@ -375,12 +375,6 @@ local function resolve(resolve_ids)
 		return resolve({ resolve_ids })
 
 	else
-		if resolve_ids[1].ref then
-			-- called with objects[id].members
-			print("called with member objects.")
-			return resolve(moses.map(resolve_ids, function (_,v) return v.ref end))
-		end
-
 		-- otherwise, called with array of object ids
 		local fetch_list = {}
 		local probably_add_to_fetch_list = function(_, member_id)
