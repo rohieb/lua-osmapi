@@ -1,8 +1,8 @@
-local utils = {}
+local _M = {}
 
 --- Call fn(k,v) for every k,v in values and replace values[k] with the return
 -- value from fn(k,v). If values is scalar, simply return fn(0, values).
-function utils.map(values, fn)
+function _M.map(values, fn)
 	if type(values) == "table" then
 		local res = {}
 		for k,v in ipairs(values) do
@@ -15,8 +15,8 @@ function utils.map(values, fn)
 end
 
 --- Build prefixed IDs for each numerical ID
-function utils.prefix_id(prefix_char, ids)
-	return utils.map(ids, function(k,v) return (prefix_char .. tonumber(v)) end)
+function _M.prefix_id(prefix_char, ids)
+	return _M.map(ids, function(k,v) return (prefix_char .. tonumber(v)) end)
 end
 
-return utils
+return _M

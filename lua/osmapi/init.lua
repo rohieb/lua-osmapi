@@ -1,10 +1,13 @@
 local lxp = require ("lxp")
 local moses = require ("moses")
-local utils = require("./utils")
+local utils = require("osmapi.utils")
 
 local http = require("socket.http")
 http.TIMEOUT = 3
 http.USERAGENT = "lua-osmapi/0.0"
+
+-- module table
+local _M = {}
 
 local APIURL = "http://api.openstreetmap.org/api"
 
@@ -21,20 +24,20 @@ local function file_pos_format(file, line, pos)
 end
 
 --- Build node ID(s) for index access in objects()
-local function node_id(ids) return utils.prefix_id("n", ids) end
+function _M.node_id(ids) return utils.prefix_id("n", ids) end
 --- Build way ID(s) for index access in objects()
-local function way_id(ids) return utils.prefix_id("w", ids) end
+function _M.way_id(ids) return utils.prefix_id("w", ids) end
 --- Build relation ID(s) for index access in objects()
-local function relation_id(ids) return utils.prefix_id("r", ids) end
+function _M.relation_id(ids) return utils.prefix_id("r", ids) end
 --- Split (single) ID into object type part and ID part
 -- @returns type, id
-local function split_id(id)
+function _M.split_id(id)
 	return string.sub(id, 1, 1), tonumber(string.sub(id, 2))
 end
 local function build_id(tagname, id)
-	if     tagname == "node"     or tagname == "n" then return node_id(id)
-	elseif tagname == "way"      or tagname == "w" then return way_id(id)
-	elseif tagname == "relation" or tagname == "r" then return relation_id(id)
+	if     tagname == "node"     or tagname == "n" then return _M.node_id(id)
+	elseif tagname == "way"      or tagname == "w" then return _M.way_id(id)
+	elseif tagname == "relation" or tagname == "r" then return _M.relation_id(id)
 	end
 end
 
@@ -78,19 +81,19 @@ local function StartElement(parser, tagname, attrs)
 				return
 			end
 
-			cur_obj.id = node_id(attrs.id)
+			cur_obj.id = _M.node_id(attrs.id)
 			cur_obj.lat = attrs.lat
 			cur_obj.lon = attrs.lon
 		end
 
 		-- ways
 		if tagname == "way" then
-			cur_obj.id = way_id(attrs.id)
+			cur_obj.id = _M.way_id(attrs.id)
 		end
 
 		-- relations
 		if tagname == "relation" then
-			cur_obj.id = relation_id(attrs.id)
+			cur_obj.id = _M.relation_id(attrs.id)
 		end
 
 		objects[cur_obj.id] = cur_obj
@@ -124,7 +127,7 @@ local function StartElement(parser, tagname, attrs)
 
 	-- parse way members
 	elseif tagname == "nd" then
-		if not parent_element or split_id(parent_element.id) ~= "w" then
+		if not parent_element or _M.split_id(parent_element.id) ~= "w" then
 			print(("Error: %s: <nd> outside of way!")
 				:format(file_pos_format(file, line, pos)))
 			parser:stop()
@@ -140,11 +143,11 @@ local function StartElement(parser, tagname, attrs)
 		if parent_element.nodes == nil then
 			parent_element.nodes = { }
 		end
-		table.insert(parent_element.nodes, node_id(attrs.ref))
+		table.insert(parent_element.nodes, _M.node_id(attrs.ref))
 
 	-- parse relation members
 	elseif tagname == "member" then
-		if not parent_element or split_id(parent_element.id) ~= "r" then
+		if not parent_element or _M.split_id(parent_element.id) ~= "r" then
 			print(("Error: %s: <member> outside of relation!")
 				:format(file_pos_format(file, line, pos)))
 			parser:stop()
@@ -197,7 +200,7 @@ local function EndElement(parser, tagname)
 	end
 end
 
-local function print_statistics()
+function _M.print_statistics()
 	print(("Object cache consists of %d nodes, %d ways, %d relations")
 		:format(obj_count.node, obj_count.way, obj_count.relation))
 	print(("  carrying %d tags, %d object references in total.")
@@ -209,7 +212,7 @@ end
 --	* res: non-nil if parsing successful, nil in case of errors
 --	* msg: optional error message
 --	* line, col, pos: line, column and absolute position where the error happened
-local function parse(s)
+function _M.parse(s)
 	if not xml_parser then
 		xml_parser = lxp.new({
 			StartElement = StartElement,
@@ -221,7 +224,7 @@ end
 
 --- Load objects from OSM XML file
 -- @return see return values from parse()
-local function load_file(filename)
+function _M.load_file(filename)
 	local f, msg = io.open(filename, "r")
 
 	if not f then
@@ -242,7 +245,7 @@ local function load_file(filename)
 		end
 
 		file = filename          -- for the error output
-		local res, msg, line, col, pos = parse(s)
+		local res, msg, line, col, pos = _M.parse(s)
 		file = "input"           -- in case parse() is afterwards called directly
 
 		if res == nil then
@@ -250,7 +253,7 @@ local function load_file(filename)
 		end
 	end
 
-	print_statistics()
+	_M.print_statistics()
 
 	return true
 end
@@ -258,12 +261,12 @@ end
 --- Delete entries from the object cache
 -- @param ids array of IDs or single ID, prefixed with object type (n|w|r). See
 --  node_id(), way_id(), relation_id().
-local function forget(ids)
+function _M.forget(ids)
 	utils.map(ids, function (_,v) objects[v] = nil end)
 end
 
 --- Empty the object cache
-local function forget_all()
+function _M.forget_all()
 	objects = {}
 end
 
@@ -275,7 +278,7 @@ local function do_fetch(url)
 	print(("HTTP %d, %d bytes"):format(c, #d))
 
 	if c == 200 and #d > 0 then
-		local res, msg, line, pol, pos = parse(d)
+		local res, msg, line, pol, pos = _M.parse(d)
 		if res == nil then
 			print("XML error:", res, msg, line, pol, pos)
 		else
@@ -296,17 +299,17 @@ end
 -- node_id(), way_id(), relation_id().
 -- @return true in case of success, http error code and response headers in case
 -- of failure
-local function fetch(objs)
+function _M.fetch(objs)
 	local url
 	local nodes, ways, relations = {}, {}, {}
 	local c, h
 
 	if type(objs) ~= "table" then
-		return fetch({ objs })
+		return _M.fetch({ objs })
 
 	else
 		moses.each(objs, function (_,v)
-			local type_part, id_part = split_id(v)
+			local type_part, id_part = _M.split_id(v)
 			if type_part == "n" then
 				table.insert(nodes, id_part)
 			elseif type_part == "w" then
@@ -348,11 +351,11 @@ end
 -- node_id(), way_id(), relation_id().
 -- @return true in case of success, HTTP error code and response headers in case
 -- of failure
-local function fetch_full(obj)
-	local type_part, id_part = split_id(obj)
+function _M.fetch_full(obj)
+	local type_part, id_part = _M.split_id(obj)
 
 	if type_part == "n" then
-		return fetch({ obj })
+		return _M.fetch({ obj })
 	elseif type_part == "w" then
 		return do_fetch(("%s/0.6/way/%d/null"):format(APIURL, tonumber(id_part)))
 	elseif type_part == "r" then
@@ -376,10 +379,10 @@ end
 --   If unknown object IDs are specified, they are silently ignored.
 -- @return true in case of success, HTTP error code and response headers in case
 --   of HTTP failure.
-local function resolve(resolve_ids)
+function _M.resolve(resolve_ids)
 	if type(resolve_ids) ~= "table" then
 		-- called with a single object id
-		return resolve({ resolve_ids })
+		return _M.resolve({ resolve_ids })
 
 	else
 		-- otherwise, called with array of object ids
@@ -396,7 +399,7 @@ local function resolve(resolve_ids)
 				return
 			end
 
-			local obj_type = split_id(object_id)
+			local obj_type = _M.split_id(object_id)
 
 			if obj_type == "w" then
 				-- iterate over way nodes
@@ -410,29 +413,11 @@ local function resolve(resolve_ids)
 			end
 		end)
 
-		return fetch(fetch_list)
+		return _M.fetch(fetch_list)
 	end
 end
 
--- build the module table
-osmapi = {
-	parse = parse,
-	load_file = load_file,
-	fetch = fetch,
-	fetch_full = fetch_full,
-	resolve = resolve,
+--- Return the object cache
+function _M.objects() return objects end
 
-	forget = forget,
-	forget_all = forget_all,
-
-	node_id = node_id,
-	way_id = way_id,
-	relation_id = relation_id,
-	split_id = split_id,
-
-	print_statistics = print_statistics,
-
-	objects = function () return objects end,
-}
-
-return osmapi
+return _M
